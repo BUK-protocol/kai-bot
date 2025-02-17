@@ -169,7 +169,9 @@ async function handleBroadcast(ctx, message) {
     if (ADMIN_IDS.includes(userId)) continue; // Skip admins
 
     try {
-      await bot.telegram.sendMessage(userId, message);
+      await bot.telegram.sendMessage(userId, message, {
+        parse_mode: "MarkdownV2",
+      });
       successCount++;
     } catch (error) {
       console.error(`❌ Failed to send message to ${userId}:`, error.message);
@@ -192,6 +194,7 @@ async function handleBroadcastWithImage(ctx, message, photo) {
     try {
       await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id, {
         caption: message, // Send text as caption for the image
+        parse_mode: "MarkdownV2",
       });
       successCount++;
     } catch (error) {
