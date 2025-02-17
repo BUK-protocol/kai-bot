@@ -5,7 +5,7 @@ const fs = require("fs");
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_IDS = ["788157490", "402486461", "5831208475"]; // Add multiple admin IDs
+const ADMIN_IDS = ["788157490", "402486461"]; // Add multiple admin IDs
 
 if (!BOT_TOKEN) {
   console.error("❌ BOT_TOKEN is missing in .env file!");
@@ -131,6 +131,8 @@ bot.on("text", async (ctx) => {
   if (userStates[userId] === "broadcast" && ADMIN_IDS.includes(userId)) {
     const messageText = ctx.message.text;
 
+    console.log(messageText);
+
     // Check if the message also contains a photo (text + image case)
     if (ctx.message.photo) {
       await handleBroadcastWithImage(ctx, messageText, ctx.message.photo);
@@ -166,7 +168,7 @@ async function handleBroadcast(ctx, message) {
   let failCount = 0;
 
   for (const userId in userDb) {
-    if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
 
     try {
       await bot.telegram.sendMessage(userId, message, {
@@ -189,7 +191,7 @@ async function handleBroadcastWithImage(ctx, message, photo) {
   let failCount = 0;
 
   for (const userId in userDb) {
-    if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
 
     try {
       await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id, {
@@ -213,7 +215,7 @@ async function handleBroadcastWithPhotoOnly(ctx, photo) {
   let failCount = 0;
 
   for (const userId in userDb) {
-    if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
 
     try {
       await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id); // Send image without text
