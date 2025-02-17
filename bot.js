@@ -5,7 +5,7 @@ const fs = require("fs");
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_IDS = ["788157490", "402486461", "5831208475"]; // Add multiple admin IDs
+const ADMIN_IDS = ["788157490", "402486461"]; // Add multiple admin IDs
 
 if (!BOT_TOKEN) {
   console.error("❌ BOT_TOKEN is missing in .env file!");
@@ -123,20 +123,45 @@ bot.on("callback_query", async (ctx) => {
     await ctx.answerCbQuery();
   }
 });
-
-// Handle text messages (Admin message broadcast)
+// Handle text, image, or both for admin message broadcast
+// Handle text messages for broadcasting
 bot.on("text", async (ctx) => {
   const userId = String(ctx.from.id);
 
   if (userStates[userId] === "broadcast" && ADMIN_IDS.includes(userId)) {
-    const messageToBroadcast = ctx.message.text;
-    await handleBroadcast(ctx, messageToBroadcast);
+    const messageText = ctx.message.text;
+
+    // Check if the message also contains a photo (text + image case)
+    if (ctx.message.photo) {
+      await handleBroadcastWithImage(ctx, messageText, ctx.message.photo);
+    } else {
+      await handleBroadcast(ctx, messageText);
+    }
+
     userStates[userId] = null; // Reset state
   }
 });
 
-// Function to broadcast a message to all users
-async function handleBroadcast(msg, message) {
+// Handle photo messages (photo only or photo + text)
+bot.on("photo", async (ctx) => {
+  const userId = String(ctx.from.id);
+
+  if (userStates[userId] === "broadcast" && ADMIN_IDS.includes(userId)) {
+    const messageText = ctx.message.caption; // Check if there is a caption
+    const messagePhoto = ctx.message.photo;
+
+    if (messageText) {
+      await handleBroadcastWithImage(ctx, messageText, messagePhoto);
+    } else {
+      await handleBroadcastWithPhotoOnly(ctx, messagePhoto);
+    }
+
+    userStates[userId] = null; // Reset state
+  }
+});
+
+// Function to broadcast a text message to all users
+async function handleBroadcast(ctx, message) {
   let successCount = 0;
   let failCount = 0;
 
@@ -153,6 +178,55 @@ async function handleBroadcast(msg, message) {
   }
 
   // Send broadcast summary to all admins
+  await sendBroadcastSummaryToAdmins(successCount, failCount);
+}
+
+// Function to handle broadcast with text + image
+async function handleBroadcastWithImage(ctx, message, photo) {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const userId in userDb) {
+    if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+
+    try {
+      await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id, {
+        caption: message, // Send text as caption for the image
+      });
+      successCount++;
+    } catch (error) {
+      console.error(`❌ Failed to send message to ${userId}:`, error.message);
+      failCount++;
+    }
+  }
+
+  // Send broadcast summary to all admins
+  await sendBroadcastSummaryToAdmins(successCount, failCount);
+}
+
+// Function to handle broadcast with only a photo (no text)
+async function handleBroadcastWithPhotoOnly(ctx, photo) {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const userId in userDb) {
+    if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+
+    try {
+      await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id); // Send image without text
+      successCount++;
+    } catch (error) {
+      console.error(`❌ Failed to send image to ${userId}:`, error.message);
+      failCount++;
+    }
+  }
+
+  // Send broadcast summary to all admins
+  await sendBroadcastSummaryToAdmins(successCount, failCount);
+}
+
+// Function to send summary to all admins
+async function sendBroadcastSummaryToAdmins(successCount, failCount) {
   const summaryMessage = `📢 Broadcast Summary:\n✅ Sent: ${successCount}\n❌ Failed: ${failCount}\n👥 Total: ${
     Object.keys(userDb).length - ADMIN_IDS.length
   }`;
