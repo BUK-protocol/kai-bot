@@ -6,6 +6,7 @@ dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_IDS = ["788157490", "402486461"]; // Add multiple admin IDs
+// "788157490"
 
 if (!BOT_TOKEN) {
   console.error("❌ BOT_TOKEN is missing in .env file!");
@@ -14,7 +15,9 @@ if (!BOT_TOKEN) {
 
 const bot = new Telegraf(BOT_TOKEN);
 
-const welcomeMessage = `🤖 *I’m KAI*, your personal travel AI, built to automate and personalize every step of your journey.
+const welcomeMessage = `
+
+🤖 *I’m KAI*, your personal travel AI, built to automate and personalize every step of your journey.
 
 I navigate across portals to find the best deals, craft seamless itineraries, and even auto-book your trips.
 
@@ -23,29 +26,10 @@ I navigate across portals to find the best deals, craft seamless itineraries, an
 💼 *Backed by:* Hustle Fund, Polygon Ventures, NewTribe Capital, and more.
 
 ⚡ *Accept KAI or get left behind.*
-`;
 
-const keyboard = {
-  inline_keyboard: [
-    [
-      {
-        text: "📝 About KAI",
-        url: "https://x.com/BukProtocol/status/1889662395465003402",
-      },
-    ],
-    [{ text: "🌍 BukProtocol Website", url: "https://bukprotocol.ai/" }],
-    [{ text: "🌍 KAI Website", url: "https://kai.bukprotocol.ai/" }],
-    [
-      {
-        text: "📼 Demo Video",
-        url: "https://x.com/BukProtocol/status/1888884933583663118",
-      },
-    ],
-    [{ text: "👥 Join the Community", url: "https://t.me/bukprotocol" }],
-    [{ text: "📢 CA: COMING SOON", callback_data: "ca_coming_soon" }],
-    [{ text: "💰 TICKER: COMING SOON", callback_data: "ticker_coming_soon" }],
-  ],
-};
+Curious to see Kai in action? Tap below! 👇
+
+`;
 
 // File for storing user database
 const USER_DB_FILE = "userDb.json";
@@ -94,21 +78,54 @@ bot.use((msg, next) => {
 bot.command("start", (msg) => {
   const userId = String(msg.from.id);
   let message = welcomeMessage;
+  const keyboard = {
+    inline_keyboard: [
+      [
+        {
+          text: "📝 About KAI",
+          url: "https://x.com/BukProtocol/status/1889662395465003402",
+        },
+      ],
+      [
+        {
+          text: "🌍 BukProtocol Website",
+          url: "https://bukprotocol.ai/",
+        },
+        { text: "🌍 Kai Website ", url: "https://bukprotocol.ai/kai" },
+      ],
+      [
+        { text: "👥 Join the Community", url: "https://t.me/bukprotocol" },
+        {
+          text: "📼 Demo Video",
+          url: "https://x.com/BukProtocol/status/1888884933583663118",
+        },
+      ],
+      [
+        { text: "🔜 CA: COMING SOON", callback_data: "ca_coming_soon" },
+        {
+          text: "🔜 TICKER: COMING SOON",
+          callback_data: "ticker_coming_soon",
+        },
+      ],
+    ],
+  };
 
   // Show admin options only if the user is an admin
   if (ADMIN_IDS.includes(userId)) {
-    message += "\n\n⚡ Admin Options:";
     keyboard.inline_keyboard.push([
       { text: "📢 Broadcast Message", callback_data: "broadcast" },
     ]);
   }
 
-  bot.telegram.sendMessage(msg.chat.id, message, {
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: keyboard.inline_keyboard,
-    },
-  });
+  bot.telegram.sendPhoto(
+    msg.chat.id,
+    { source: "./kai.jpg" },
+    {
+      caption: message,
+      parse_mode: "Markdown",
+      reply_markup: keyboard,
+    }
+  );
 });
 
 // Command: Broadcast (Admin Only)
@@ -123,7 +140,6 @@ bot.on("callback_query", async (ctx) => {
     await ctx.answerCbQuery();
   }
 });
-// Handle text, image, or both for admin message broadcast
 // Handle text messages for broadcasting
 bot.on("text", async (ctx) => {
   const userId = String(ctx.from.id);
@@ -131,9 +147,7 @@ bot.on("text", async (ctx) => {
   if (userStates[userId] === "broadcast" && ADMIN_IDS.includes(userId)) {
     const messageText = ctx.message.text;
 
-    console.log(messageText);
-
-    // Check if the message also contains a photo (text + image case)
+    // Check if the message contains a photo (text + image case)
     if (ctx.message.photo) {
       await handleBroadcastWithImage(ctx, messageText, ctx.message.photo);
     } else {
@@ -162,16 +176,41 @@ bot.on("photo", async (ctx) => {
   }
 });
 
+// Handle video messages (video only or video + text)
+bot.on("video", async (ctx) => {
+  const userId = String(ctx.from.id);
+
+  console.log("video sent");
+
+  if (userStates[userId] === "broadcast" && ADMIN_IDS.includes(userId)) {
+    const messageText = ctx.message.caption; // Check if there is a caption
+    const messageVideo = ctx.message.video;
+
+    if (messageText) {
+      await handleBroadcastWithVideo(ctx, messageText, messageVideo);
+    } else {
+      await handleBroadcastWithVideoOnly(ctx, messageVideo);
+    }
+
+    userStates[userId] = null; // Reset state
+  }
+});
+
+function escapeMarkdownV2(text) {
+  return text.replace(/[_*[\]()~`>#+-=|{}.!]/g, "\\$&");
+}
+
 // Function to broadcast a text message to all users
 async function handleBroadcast(ctx, message) {
   let successCount = 0;
   let failCount = 0;
 
-  for (const userId in userDb) {
-    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+  // Escape message for MarkdownV2
+  const escapedMessage = escapeMarkdownV2(message);
 
+  for (const userId in userDb) {
     try {
-      await bot.telegram.sendMessage(userId, message, {
+      await bot.telegram.sendMessage(userId, escapedMessage, {
         parse_mode: "MarkdownV2",
       });
       successCount++;
@@ -191,11 +230,11 @@ async function handleBroadcastWithImage(ctx, message, photo) {
   let failCount = 0;
 
   for (const userId in userDb) {
-    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
+    const escapedMessage = escapeMarkdownV2(message);
 
     try {
       await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id, {
-        caption: message, // Send text as caption for the image
+        caption: escapedMessage, // Send text as caption for the image
         parse_mode: "MarkdownV2",
       });
       successCount++;
@@ -215,8 +254,6 @@ async function handleBroadcastWithPhotoOnly(ctx, photo) {
   let failCount = 0;
 
   for (const userId in userDb) {
-    // if (ADMIN_IDS.includes(userId)) continue; // Skip admins
-
     try {
       await bot.telegram.sendPhoto(userId, photo[photo.length - 1].file_id); // Send image without text
       successCount++;
@@ -229,6 +266,51 @@ async function handleBroadcastWithPhotoOnly(ctx, photo) {
   // Send broadcast summary to all admins
   await sendBroadcastSummaryToAdmins(successCount, failCount);
 }
+
+// Function to handle broadcast with text + video
+async function handleBroadcastWithVideo(ctx, message, video) {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const userId in userDb) {
+    const escapedMessage = escapeMarkdownV2(message);
+
+    try {
+      await bot.telegram.sendVideo(userId, video.file_id, {
+        caption: escapedMessage, // Send text as caption for the video
+        parse_mode: "MarkdownV2",
+      });
+      successCount++;
+    } catch (error) {
+      console.error(`❌ Failed to send message to ${userId}:`, error.message);
+      failCount++;
+    }
+  }
+
+  // Send broadcast summary to all admins
+  await sendBroadcastSummaryToAdmins(successCount, failCount);
+}
+
+// Function to handle broadcast with only a video (no text)
+async function handleBroadcastWithVideoOnly(ctx, video) {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const userId in userDb) {
+    try {
+      await bot.telegram.sendVideo(userId, video.file_id); // Send video without text
+      successCount++;
+    } catch (error) {
+      console.error(`❌ Failed to send video to ${userId}:`, error.message);
+      failCount++;
+    }
+  }
+
+  // Send broadcast summary to all admins
+  await sendBroadcastSummaryToAdmins(successCount, failCount);
+}
+
+// Function to send summary to all admins
 
 // Function to send summary to all admins
 async function sendBroadcastSummaryToAdmins(successCount, failCount) {
