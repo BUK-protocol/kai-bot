@@ -29,6 +29,10 @@ I navigate across portals to find the best deals, craft seamless itineraries, an
 
 Curious to see Kai in action? Tap below! 👇
 
+CA:[6DpdEMbQ5a2CowagL9qZpA7pP367b9Fv1k2x7FcJvirt](https://app.virtuals.io/virtuals/21083)
+
+TICKER:$AITRAVEL
+
 `;
 
 // File for storing user database
@@ -101,10 +105,9 @@ bot.command("start", (msg) => {
         },
       ],
       [
-        { text: "🔜 CA: COMING SOON", callback_data: "ca_coming_soon" },
         {
-          text: "🔜 TICKER: COMING SOON",
-          callback_data: "ticker_coming_soon",
+          text: "$AITRAVEL",
+          url: "https://www.geckoterminal.com/solana/pools/GxGjduAwVncnaAJCuWC9H7deHEya7XsKDGP94u6XdLV2",
         },
       ],
     ],
