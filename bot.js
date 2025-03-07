@@ -5,7 +5,7 @@ const fs = require("fs");
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_IDS = ["788157490", "402486461"]; // Add multiple admin IDs
+const ADMIN_IDS = ["788157490", "402486461", "5831208475"]; // Add multiple admin IDs
 // "788157490"
 
 if (!BOT_TOKEN) {
